@@ -1,12 +1,8 @@
 verbose = false
 notify_user = "bart"
 source_path = "./source"
-
+target_user = "bart"
+target_path = "./target"
 [[targets]]
-type = local
-configuration
-user = "bart"
-host = "localhost"
+host = "example.com"
 port = 22
-path = "./target"
-ssh_key = "/home/foo/.ssh/id_rsa"

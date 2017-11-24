@@ -10,7 +10,6 @@ extern crate chrono;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_yaml;
 extern crate toml;
 
 use chrono::offset::Utc;
@@ -28,18 +27,6 @@ pub trait Target: fmt::Display {
     fn is_ready(&self, environment: Rc<Environment>) -> Result<()>;
 
     fn backup(&self, environment: Rc<Environment>) -> Result<()>;
-}
-
-#[derive(Debug, Deserialize)]
-pub struct LocalRsyncTarget {
-    // The path on the target to back up to. Must be owned by this application.
-    path: String,
-}
-
-impl fmt::Display for LocalRsyncTarget {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.path.as_str())
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -107,7 +94,7 @@ impl Target for SshRsyncTarget {
         //
         //
         //
-        //  so long store short Rc<Sring> would be like a &String, but with no lifetime to fanagle with
+        //  so long store [story] short Rc<Sring> would be like a &String, but with no lifetime to fanagle with
         //
         //
         //
@@ -188,7 +175,7 @@ pub struct Configuration {
     pub source_path: String,
 
     // The targets to try.
-    pub targets: Vec<Rc<Target>>,
+    pub targets: Vec<Rc<SshRsyncTarget>>,
 }
 
 impl Configuration {
@@ -196,21 +183,11 @@ impl Configuration {
         let mut file = File::open(file_path).chain_err(||"Error opening configuration file.")?;
         let mut json = String::new();
         file.read_to_string(&mut json).chain_err(|| "Error reading configuration file.")?;
-        Configuration::from_yaml(json)
+        Configuration::from_toml(json)
     }
 
     fn from_toml(toml: String) -> Result<Self> {
         let configuration: Self = toml::from_str(toml.as_ref()).chain_err(|| "Error parsing configuration file as TOML.")?;
-        Ok(configuration)
-    }
-
-    fn from_json(json: String) -> Result<Self> {
-        let configuration: Self = serde_json::from_str(json.as_ref()).chain_err(|| "Error parsing configuration file as JSON.")?;
-        Ok(configuration)
-    }
-
-    fn from_yaml(json: String) -> Result<Self> {
-        let configuration: Self = serde_yaml::from_str(json.as_ref()).chain_err(|| "Error parsing configuration file as YAML.")?;
         Ok(configuration)
     }
 }

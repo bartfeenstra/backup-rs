@@ -84,7 +84,7 @@ fn main() {
         Command::Backup => backup(args),
         Command::Restore => restore(args),
         Command::None => {
-            println!("Use --help for usage information.");
+            println!("Unknown command. Use --help for usage information.");
             Ok(())
         },
     };

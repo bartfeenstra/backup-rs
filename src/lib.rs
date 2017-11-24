@@ -22,6 +22,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::result::Result as StdResult;
 use std::rc::Rc;
+use std::ffi::OsString;
 
 pub trait Target: fmt::Display {
     fn is_ready(&self, environment: Rc<Environment>) -> Result<()>;
@@ -42,9 +43,6 @@ pub struct SshRsyncTarget {
 
     // The path on the target to back up to. Must be owned by this application.
     path: String,
-
-    // The absolute path to the SSH private key.
-    pub ssh_key: String,
 }
 
 impl SshRsyncTarget {
@@ -77,7 +75,7 @@ impl SshRsyncTarget {
     fn remote_command(&self, environment: Rc<Environment>, command: &str) -> Result<()> {
         // @todo We need to take the remote executable and options, and escape them properly for use in an argument.
         let ssh_target = self.to_ssh();
-        let options = vec!["-i", self.ssh_key.as_str(), ssh_target.as_str(), command];
+        let options = vec!["-i", "~/.ssh/id_rsa", ssh_target.as_str(), command];
         environment.command("ssh", options)
     }
 }
@@ -230,5 +228,31 @@ impl Runner {
             }
         }
         Err("Could not connect to any of the targets.".into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_toml_config_should_succeed_if_valid() {
+        let configuration_file_path = "./tests/resources/configuration/backup.toml";
+        let configuration = Configuration::from_file(Path::new(&configuration_file_path)).unwrap();
+        assert_eq!(configuration.notify_user.unwrap(), "bart");
+    }
+
+    #[test]
+    #[should_panic]
+    fn parse_toml_config_should_fail_if_invalid() {
+        let configuration_file_path = "./tests/resources/configuration/backup-invalid.toml";
+        Configuration::from_file(Path::new(&configuration_file_path)).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn parse_toml_config_should_fail_if_incomplete() {
+        let configuration_file_path = "./tests/resources/configuration/backup-incomplete.toml";
+        Configuration::from_file(Path::new(&configuration_file_path)).unwrap();
     }
 }

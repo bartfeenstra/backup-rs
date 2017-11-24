@@ -179,9 +179,9 @@ pub struct Configuration {
 impl Configuration {
     pub fn from_file(file_path: &Path) -> Result<Self> {
         let mut file = File::open(file_path).chain_err(||"Error opening configuration file.")?;
-        let mut json = String::new();
-        file.read_to_string(&mut json).chain_err(|| "Error reading configuration file.")?;
-        Configuration::from_toml(json)
+        let mut configuration_data = String::new();
+        file.read_to_string(&mut configuration_data).chain_err(|| "Error reading configuration file.")?;
+        Configuration::from_toml(configuration_data)
     }
 
     fn from_toml(toml: String) -> Result<Self> {

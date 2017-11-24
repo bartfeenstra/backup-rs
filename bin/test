@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+
+(
+    cd `dirname "$0"`/.. &&
+    docker run &&
+    cargo test
+
+    # Clean-up.
+    docker stop ...
+)
+
+

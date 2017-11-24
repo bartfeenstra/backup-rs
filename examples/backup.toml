@@ -1,0 +1,12 @@
+verbose = false
+notify_user = "bart"
+source_path = "./source"
+
+[[targets]]
+type = local
+configuration
+user = "bart"
+host = "localhost"
+port = 22
+path = "./target"
+ssh_key = "/home/foo/.ssh/id_rsa"

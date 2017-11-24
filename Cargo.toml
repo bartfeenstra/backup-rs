@@ -1,0 +1,13 @@
+[package]
+name = "backups"
+version = "0.1.0"
+authors = ["Bart Feenstra <bart@mynameisbart.com>"]
+
+[dependencies]
+argparse = "0.2.1"
+chrono = "0.4.0"
+error-chain = "0.10.0"
+serde = { version = "1.0.8", features = ["rc"] }
+serde_derive = "1.0.8"
+serde_yaml = "0.7.1"
+toml = "0.4.2"

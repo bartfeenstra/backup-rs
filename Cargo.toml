@@ -7,7 +7,11 @@ authors = ["Bart Feenstra <bart@mynameisbart.com>"]
 argparse = "0.2.1"
 chrono = "0.4.0"
 error-chain = "0.10.0"
+futures = "0.1.17"
 serde = { version = "1.0.8", features = ["rc"] }
 serde_derive = "1.0.8"
+thrussh = "0.16.2"
+thrussh-keys = "0.7.3"
+tokio-core = "0.1.10"
 toml = "0.4.2"
 url = "1.6.0"

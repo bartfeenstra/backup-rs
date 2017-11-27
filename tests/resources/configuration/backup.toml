@@ -1,4 +1,4 @@
-verbose = false
+verbose = true
 notify_user = "bart"
 source_path = "./source"
 [[targets]]

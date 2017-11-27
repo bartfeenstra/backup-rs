@@ -11,6 +11,10 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate toml;
+extern crate thrussh;
+extern crate thrussh_keys;
+extern crate futures;
+extern crate tokio_core;
 
 use chrono::offset::Utc;
 use serde::de::{Deserialize, Deserializer, Visitor, MapAccess};
@@ -23,6 +27,63 @@ use std::process::{Command, Stdio};
 use std::result::Result as StdResult;
 use std::rc::Rc;
 use std::ffi::OsString;
+use thrussh::{client, ChannelId, Disconnect, key};
+use thrussh::client::Connection;
+use thrussh_keys::load_secret_key;
+use futures::Future;
+use std::io::Read;
+use std::sync::Arc;
+use tokio_core::net::TcpStream;
+
+
+
+pub struct SshHandler { }
+
+impl SshHandler {
+
+    pub fn new() -> SshHandler {
+        SshHandler {}
+    }
+
+}
+
+impl client::Handler for SshHandler {
+    type Error = ();
+    type FutureBool = futures::Finished<(Self, bool), Self::Error>;
+    type FutureUnit = futures::Finished<Self, Self::Error>;
+    type SessionUnit = futures::Finished<(Self, client::Session), Self::Error>;
+    fn check_server_key(self, server_public_key: &key::PublicKey) -> Self::FutureBool {
+        println!("check_server_key: {:?}", server_public_key);
+        futures::finished((self, true))
+    }
+    fn channel_open_confirmation(self, channel: ChannelId, session: client::Session) -> Self::SessionUnit {
+        println!("channel_open_confirmation: {:?}", channel);
+        futures::finished((self, session))
+    }
+    fn data(self, channel: ChannelId, ext: Option<u32>, data: &[u8], session: client::Session) -> Self::SessionUnit {
+        println!("data on channel {:?} {:?}: {:?}", ext, channel, std::str::from_utf8(data));
+        futures::finished((self, session))
+    }
+}
+
+fn ssh_session<I, E, X, F>(environment: Environment, target: SshRsyncTarget, f: F)
+    where X: Future<Item = I, Error = E>,
+        F: FnOnce(Connection<TcpStream, SshHandler>) -> X,
+{
+
+    client::connect(
+        format!("{}:{}", target.host, target.port), environment.ssh_config, None, environment.ssh_handler,
+        |connection| {
+            let mut key_file = std::fs::File::open("~/.ssh/id_rsa").unwrap();
+            let mut key = String::new();
+            key_file.read_to_string(&mut key).unwrap();
+            let key = load_secret_key(&key, None, None).unwrap();
+            connection.authenticate_key(target.user.as_str(), key)
+                .and_then(f)
+        }).unwrap();
+    // @todo Return something useful?
+
+}
 
 pub trait Target: fmt::Display {
     fn is_ready(&self, environment: Rc<Environment>) -> Result<()>;
@@ -75,7 +136,7 @@ impl SshRsyncTarget {
     fn remote_command(&self, environment: Rc<Environment>, command: &str) -> Result<()> {
         // @todo We need to take the remote executable and options, and escape them properly for use in an argument.
         let ssh_target = self.to_ssh();
-        let options = vec!["-i", "~/.ssh/id_rsa", ssh_target.as_str(), command];
+        let options = vec!["-i", "~/.ssh/id_rsa", "-o", "ConnectTimeout=3", ssh_target.as_str(), command];
         environment.command("ssh", options)
     }
 }
@@ -83,7 +144,18 @@ impl SshRsyncTarget {
 impl Target for SshRsyncTarget {
     fn is_ready(&self, environment: Rc<Environment>) -> Result<()> {
         environment.log(format!("Trying to connect to target {}.", self).as_str());
+        // @todo This does not fail as expected when no connection could be made.
         self.remote_command(environment, "exit")
+//        let session = open_session(environment, self)?|session| {
+
+//        session.channel_open_session().and_then(|(session, channelid)| {
+//
+//            session.data(channelid, None, "Hello, world!").and_then(|(mut session, _)| {
+//                session.disconnect(Disconnect::ByApplication, "Ciao", "");
+//                session
+//            })
+//        })
+//    }
     }
 
     fn backup(&self, environment: Rc<Environment>) -> Result<()> {
@@ -110,12 +182,18 @@ impl fmt::Display for SshRsyncTarget {
 
 pub struct Environment {
     pub configuration: Configuration,
+    pub ssh_handler: SshHandler,
+    pub ssh_config: Arc<client::Config>,
 }
 
 impl Environment {
     pub fn new(configuration: Configuration) -> Self {
+        let mut ssh_config = thrussh::client::Config::default();
+        ssh_config.connection_timeout = Some(std::time::Duration::from_secs(3));
         Self {
             configuration: configuration,
+            ssh_handler: SshHandler::new(),
+            ssh_config: Arc::new(ssh_config),
         }
     }
 

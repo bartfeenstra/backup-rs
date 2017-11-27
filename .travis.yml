@@ -1,0 +1,34 @@
+language: rust
+
+cache:
+  cargo: true
+  apt: true
+  directories:
+    - $HOME/lib
+    - $HOME/include
+
+rust:
+  - stable
+  - beta
+  - nightly
+
+addons:
+  apt:
+    packages:
+      # Cargo coverage dependencies
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - binutils-dev
+
+install:
+  - cargo install cargo-travis || echo "Cargo travis is already installed!"
+  - export PATH=$HOME/.cargo/bin:$PATH
+
+script:
+  - cargo test --all --verbose
+
+after_success: |
+  if [ "$TRAVIS_RUST_VERSION" == "stable" ]; then
+    cargo coveralls --exclude-pattern tests/ --all
+  fi

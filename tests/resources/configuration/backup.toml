@@ -1,0 +1,8 @@
+verbose = true
+notify_user = "bart"
+source_path = "./source"
+[[targets]]
+host = "example.com"
+port = 22
+user = "bart"
+path = "./target"
